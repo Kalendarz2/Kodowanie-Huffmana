@@ -40,17 +40,17 @@ void SaveCode(struct QueuePart* root, char* code[], char arr[], int top)
     }
 }
 
-void Decode(struct QueuePart* root, int* index, char str_compressed[])
+void Decode(struct QueuePart* root, int* index, char str_compressed[], FILE* file)
 {
     if (!root->left && !root->right)
     {
-        printf("%c", root->data);
+        fprintf(file, "%c", root->data);
         return;
     }
 
     *index = *index + 1;
-    if (root->left && str_compressed[*index] == '0') Decode(root->left, index, str_compressed);
-    else if (root->right && str_compressed[*index] == '1') Decode(root->right, index, str_compressed);
+    if (root->left && str_compressed[*index] == '0') Decode(root->left, index, str_compressed, file);
+    else if (root->right && str_compressed[*index] == '1') Decode(root->right, index, str_compressed, file);
     else return;
 }
 
@@ -84,10 +84,10 @@ void* ReconstructTree(FILE* file)
     return Tree(letters, freq, n);
 }
 
-void Decompress(char string[])
+void Decompress(char file_name[])
 {
     //Rekonstrukcja drzewa binarnego
-    FILE* file = fopen(string, "r");
+    FILE* file = fopen(file_name, "r");
     if (file == NULL) {
         perror("Unable to open file");
         exit(EXIT_FAILURE);
@@ -137,16 +137,18 @@ void Decompress(char string[])
     fclose(file);
 
     //Odkodowanie tekstu
+    *strstr(file_name, ".huff") = '\0';
+    file = fopen(file_name, "w");
     int index = -1;
-    printf("\nZdekompresowany tekst: %s");
-    while (index < (int)(strlen(str_compressed) - 1)) Decode(root, &index, str_compressed);
+
+    while (index < (int)(strlen(str_compressed) - 1)) Decode(root, &index, str_compressed, file);
 
 
     //Zwolnienie miejsca w pamięci
     free(str_compressed);
 }
 
-void Compress(char string[], int freq[], char letters[], int str_length, int letters_count)
+void Compress(char file_name[], char string[], int freq[], char letters[], int str_length, int letters_count)
 {
     printf("\nDlugosc: %d\nUnikalnych znakow: %d\n\n", str_length, letters_count);
 
@@ -162,7 +164,8 @@ void Compress(char string[], int freq[], char letters[], int str_length, int let
     SaveCode(root, code, arr, top);
 
     //Zapis drzewa binarnego
-    FILE* file = fopen("file.huff", "w");
+    strcat(file_name, ".huff");
+    FILE* file = fopen(file_name, "w");
     for (int i = 0; i < letters_count; i++) {
         fprintf(file, "%c%d ", letters[i], freq[letters[i]]);
     }
@@ -197,26 +200,26 @@ void Compress(char string[], int freq[], char letters[], int str_length, int let
 
 }
 
-void ReadString(char string[])
+void ReadString(char to_compress[])
 {
     //Inicjacja zmiennych potrzebnych do odczytu tekstu
-    int str_length = strlen(string), letters_count = 0, i, freq[256];
+    int str_length = strlen(to_compress), letters_count = 0, i, freq[256];
     char letters[256];
     memset(freq, 0, sizeof freq);
 
     //Odczyt danych z argumentu komendy
     for (i = 0; i < str_length; i++)
     {
-        if (freq[string[i]] == 0)
+        if (freq[to_compress[i]] == 0)
         {
-            letters[letters_count] = string[i];
+            letters[letters_count] = to_compress[i];
             letters_count++;
         }
-        freq[string[i]]++;
+        freq[to_compress[i]]++;
     }
 
     //Utworzenie drzewa binarnego i kompresja tekstu
-    Compress(string, freq, letters, str_length, letters_count);
+    Compress("file",to_compress, freq, letters, str_length, letters_count);
 }
 
 void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* letters_count)
@@ -241,7 +244,7 @@ void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* le
     fclose(file);
 }
 
-void ReadFile(FILE* file)
+void ReadFile(FILE* file, char file_name[])
 {
     //Inicjacja zmiennych potrzebnych do odczytu tekstu
     int str_length = 0, letters_count = 0, i, freq[256];
@@ -251,7 +254,7 @@ void ReadFile(FILE* file)
     char* string = InputFile(file, freq, letters, &str_length, &letters_count);
 
     //Utworzenie drzewa binarnego i kompresja tekstu
-    Compress(string, freq, letters, str_length, letters_count);
+    Compress(file_name, string, freq, letters, str_length, letters_count);
 
 }
 
@@ -261,10 +264,20 @@ int main(int argc, char *argv[])
     if (argc >= 3 && !strcmp(argv[1], "compress")) {
 
         FILE* file = fopen(argv[2], "r");
+
         if (file == NULL) ReadString(argv[2]);
-        else ReadFile(file);
+        else
+        {
+            char file_name[128];
+            strcpy(file_name, argv[2]);
+            ReadFile(file, file_name);
+        }
     }
     else if (argc >= 3 && !strcmp(argv[1], "decompress")) {
+        if (strstr(argv[2], "huff") == NULL) {
+            printf("\nNiepoprawny format lub adres pliku\n");
+            return 0;
+        }
         Decompress(argv[2]);
     }
     else {
