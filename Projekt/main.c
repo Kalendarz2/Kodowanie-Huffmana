@@ -282,6 +282,7 @@ int main(int argc, char *argv[])
     }
     else {
         printf("Lista dostepnych komend:\n\n huffman compress \"tekst\"\n huffman compress <adres pliku>\n huffman decompress <adres skompresowanego pliku>\n\n");
+        system("pause");
         return 1;
     }
 

@@ -1,28 +1,32 @@
 #include <stdlib.h>
 
+//Fragment kolejki zawiaraj¹cy dane o znaku
 struct QueuePart {
     char data;
     unsigned freq;
     struct QueuePart* left, * right;
 };
 
+//Kolejka
 struct Queue {
     int front, back, capacity;
     struct QueuePart** array;
 };
 
+//Test, czy kolejka jest pusta
 int isEmpty(struct Queue* queue)
 {
     return (queue->front == -1);
 }
 
+//Pobieranie pierwszego elementu kolejki
 struct QueuePart* getFront(struct Queue* queue)
 {
     if (queue->front == -1) return NULL;
     return queue->array[queue->front];
 }
 
-
+//Utworzenie nowego elementu
 struct QueuePart* CreatePart(char data, unsigned freq)
 {
     struct QueuePart* temp = (struct QueuePart*)malloc(sizeof(struct QueuePart));
@@ -32,6 +36,7 @@ struct QueuePart* CreatePart(char data, unsigned freq)
     return temp;
 }
 
+//Utworzenie nowej kolejki
 struct Queue* CreateQueue(int capacity)
 {
     struct Queue* queue = (struct Queue*)malloc(sizeof(struct Queue));
@@ -42,6 +47,7 @@ struct Queue* CreateQueue(int capacity)
     return queue;
 }
 
+//Dodanie elementu do kolejki
 void AddToQueue(struct Queue* queue, struct QueuePart* item)
 {
     if (queue->back == queue->capacity - 1) return;
@@ -50,6 +56,7 @@ void AddToQueue(struct Queue* queue, struct QueuePart* item)
     if (queue->front == -1) ++queue->front;
 }
 
+//Usuniêcie elementu z kolejki
 struct QueuePart* RemoveFromQueue(struct Queue* queue)
 {
     if (isEmpty(queue)) return NULL;
@@ -60,6 +67,7 @@ struct QueuePart* RemoveFromQueue(struct Queue* queue)
     return temp;
 }
 
+//Transfer najmniejszej wartoœci pomiêdzy kolejkami
 struct QueuePart* MinFrom(struct Queue* Queue1, struct Queue* Queue2)
 {
     if (isEmpty(Queue1)) return RemoveFromQueue(Queue2);
@@ -75,6 +83,7 @@ struct QueuePart* Tree(char data[], int freq[], int size)
     struct Queue* Queue1 = CreateQueue(size);
     struct Queue* Queue2 = CreateQueue(size);
 
+    //Wype³nienie kolejki danymi
     for (int i = 0; i < size; ++i) AddToQueue(Queue1, CreatePart(data[i], freq[data[i]]));
 
     while (!(isEmpty(Queue1) && Queue2->front == Queue2->back && Queue2->front != -1))
