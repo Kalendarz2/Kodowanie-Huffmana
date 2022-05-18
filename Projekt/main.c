@@ -94,28 +94,66 @@ void Decompress(char file_name[])
     }
     struct QueuePart* root = ReconstructTree(file);
 
-    //Dekompresja tekstu
+    //Inicjacja dekompresji tekstu
     char* str_compressed = calloc(8, sizeof(char));
     char last_letter = '0', prev_letter, letter, temp[8];
     unsigned int mask = 1U << 7;
     int i, in, n = 0;
 
-    while (!feof(file))
+    while ((letter = fgetc(file)) != EOF) //Odczytanie pliku
     {
-        letter = fgetc(file);
-        if (feof(file)) break;
+        in = (int)letter;
 
+        if (in == -2) //Odkodowanie znaku EOF
+        {
+            letter = fgetc(file);
+            in = (int)letter;
+            
+            if (!(in & mask)) //2 bity kodujące eof, znak zastępujący eof lub wadliwy znak 26
+            {
+                in <<= 1;
+                if (in & mask)
+                {
+                    for (i = 0; i < 7; i++) str_compressed[n + i] = '1';
+                    str_compressed[n + 7] = '0';
+                }
+                else for (i = 0; i < 8; i++) str_compressed[n + i] = '1';
+            }
+            else
+            {
+                in <<= 1;
+                for (i = 0; i < 8; i++) str_compressed[n + i] = '0';
+                for (i = 3; i < 5; i++) str_compressed[n + i] = '1';
+                str_compressed[n + 6] = '1';
+            }
+            n += 8;
+            in <<= 1;
+
+            //Pozostałe 6 bitów
+            for (i = 0; i < 6; i++)
+            {
+                str_compressed[n + i] = (in & mask) ? '1' : '0';
+                in <<= 1;
+            }
+            n += 6;
+        }
+        else
+        {
+            for (i = 0; i < 8; i++)
+            {
+                str_compressed[n + i] = (in & mask) ? '1' : '0';
+                in <<= 1;
+            }
+            n += 8;
+        }
+
+        //Zapis ostatnich znaków
         prev_letter = last_letter;
         last_letter = letter;
 
-        in = (int)letter;
-        for (i = 0; i < 8; i++)
-        {
-            str_compressed[n + i] = (in & mask) ? '1' : '0';
-            in <<= 1;
-        }
-        n += 8;
-        str_compressed = realloc(str_compressed, sizeof(char) * (n + 8));
+        //Poszerzenie pamięci stringu
+        str_compressed = realloc(str_compressed, sizeof(char) * (n + 16));
+        
     }
     n -= 8;
 
@@ -175,6 +213,7 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
     char temp[8];
     unsigned char bit;
     int j, n = 0;
+
     for (int i = 0;i < str_length;i++)
     {
         for (j = 0;j < strlen(code[string[i]]);j++)
@@ -184,6 +223,24 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
             {
                 n = 0;
                 bit = strtol(temp, 0, 2);
+
+                if (bit == 254)  //Przygotowanie zamiennika znaku EOF
+                {
+                    temp[n++] = '0';
+                    temp[n++] = '1';
+                }
+                else if (bit == 255)  //Zastępowanie znaku EOF (255/-1)
+                {
+                    bit = 254;
+                    temp[n++] = '0';
+                    temp[n++] = '0';
+                }
+                else if (bit == 26)  //Zastępowanie z jakiegoś powodu wadliwego znaku
+                {
+                    bit = 254;
+                    temp[n++] = '1';
+                    temp[n++] = '0';
+                }
                 fputc(bit, file);
             }
         }
