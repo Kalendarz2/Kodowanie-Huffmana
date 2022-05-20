@@ -1,42 +1,51 @@
 ﻿#include "tree.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <conio.h>
+#include <windows.h>
 
-void Sort(int n, int freq[], char letters[])
+void ClearConsole()
 {
-    char temp;
-    for (int i = 0; i < n - 1; i++)
-        for (int j = 0; j < n - i - 1; j++)
-            if (freq[letters[j]] > freq[letters[j + 1]])
-            {
-                temp = letters[j];
-                letters[j] = letters[j + 1];
-                letters[j + 1] = temp;
-            }
+    system("@cls||clear");
 }
 
-void SaveCode(struct QueuePart* root, char* code[], char arr[], int top)
+//Zapisanie kodu odczytu danych z drzewa na podstawie znaków stringu wejściowego
+void SaveCode(struct QueuePart* root, char* code[], char arr[], int top, int* line)
 {
     if (root->left)
     {
         arr[top] = '0';
-        SaveCode(root->left, code, arr, top + 1);
+        SaveCode(root->left, code, arr, top + 1, line);
     }
     if (root->right)
     {
         arr[top] = '1';
-        SaveCode(root->right, code, arr, top + 1);
+        SaveCode(root->right, code, arr, top + 1, line);
     }
     else if (!root->left)
     {
         code[root->data] = calloc(top, sizeof(char));
-        printf("'%c'     ", root->data);
-        for (int i = 0;i < top;i++) {
-            printf("%c", arr[i]);
-            code[root->data][i] = arr[i];
-        }
+        if (root->data == '\n') printf("'/n'    ");
+        else if (root->data == 9) printf("'tab'   ");
+        else printf("'%c'     ", root->data);
+
+        //Zapisanie kodu na literę
+        for (int i = 0;i < top;i++) code[root->data][i] = arr[i];
+
         code[root->data][top] = '\0';
-        printf("\n");
+        printf("%s", code[root->data]);
+
+        //Wyświetlanie 3 w 1 linijce
+        printf("\r\033[32C");
+        *line = *line + 1;
+        if (*line == 2) printf("\033[32C");
+        else if (*line >= 3)
+        {
+            printf("\n");
+            *line = 0;
+        }
+
     }
 }
 
@@ -54,44 +63,9 @@ void Decode(struct QueuePart* root, int* index, char str_compressed[], FILE* fil
     else return;
 }
 
-void* ReconstructTree(FILE* file)
-{
-    char letter, letter2, letters[256], count[8];
-    int i = 0, n = 0, freq[256];
-
-    printf("\nznak    czestotliwosc\n");
-    while ((letter = (char)fgetc(file)) != -1)
-    {
-
-        letters[n] = letter;
-        i = 0;
-        letter2 = (char)fgetc(file);
-        if (letter == '-' && letter2 == '-') //Koniec drzewa i miejsce rozpoczęcia skompresowanego pliku
-        {
-            break;
-        }
-
-        do {
-            count[i++] = (char)letter2;
-        } while ((letter2 = (char)fgetc(file)) != ' ');
-
-        freq[letters[n]] = (int)atoi(count);
-
-        printf("'%c'     %d\n",letters[n], freq[letters[n]]);
-        n++;
-    }
-    Sort(n, freq, letters);
-    return Tree(letters, freq, n);
-}
-
-void Decompress(char file_name[])
+void Decompress(FILE* file, char file_name[])
 {
     //Rekonstrukcja drzewa binarnego
-    FILE* file = fopen(file_name, "r");
-    if (file == NULL) {
-        perror("Unable to open file");
-        exit(EXIT_FAILURE);
-    }
     struct QueuePart* root = ReconstructTree(file);
 
     //Inicjacja dekompresji tekstu
@@ -108,7 +82,7 @@ void Decompress(char file_name[])
         {
             letter = fgetc(file);
             in = (int)letter;
-            
+
             if (!(in & mask)) //2 bity kodujące eof, znak zastępujący eof lub wadliwy znak 26
             {
                 in <<= 1;
@@ -153,7 +127,7 @@ void Decompress(char file_name[])
 
         //Poszerzenie pamięci stringu
         str_compressed = realloc(str_compressed, sizeof(char) * (n + 16));
-        
+
     }
     n -= 8;
 
@@ -162,7 +136,7 @@ void Decompress(char file_name[])
     {
         n -= 8;
         in = (int)prev_letter;
-        mask = 1U << (int)last_letter-1;
+        mask = 1U << (int)last_letter - 1;
         for (i = 0; i < (int)last_letter; i++)
         {
             str_compressed[n + i] = (in & mask) ? '1' : '0';
@@ -180,7 +154,7 @@ void Decompress(char file_name[])
     int index = -1;
 
     while (index < (int)(strlen(str_compressed) - 1)) Decode(root, &index, str_compressed, file);
-
+    fclose(file);
 
     //Zwolnienie miejsca w pamięci
     free(str_compressed);
@@ -188,18 +162,18 @@ void Decompress(char file_name[])
 
 void Compress(char file_name[], char string[], int freq[], char letters[], int str_length, int letters_count)
 {
-    printf("\nDlugosc: %d\nUnikalnych znakow: %d\n\n", str_length, letters_count);
+    printf("Dlugosc: %d\nUnikalnych znakow: %d\n\n", str_length, letters_count);
 
     //Sortowanie i tworzenie drzewa binarnego
-    Sort(letters_count, freq, letters);
+    SortInput(letters_count, freq, letters);
     struct QueuePart* root = Tree(letters, freq, letters_count);
 
-    //Save code
+    //Zapis kodu optymalizacji odczytu drzewa
     char* code[256];
     char arr[16];
-    int top = 0;
-    printf("znak    kod\n");
-    SaveCode(root, code, arr, top);
+    int top = 0, line = 0;
+    printf("znak    kod                     znak    kod                     znak    kod\n");
+    SaveCode(root, code, arr, top, &line);
 
     //Zapis drzewa binarnego
     strcat(file_name, ".huff");
@@ -210,7 +184,7 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
     fprintf(file, "--");
 
     //Kompresja tekstu
-    char temp[8];
+    char temp[9];
     unsigned char bit;
     int j, n = 0;
 
@@ -222,6 +196,7 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
             if (n >= 8)
             {
                 n = 0;
+                temp[8] = '\0';
                 bit = strtol(temp, 0, 2);
 
                 if (bit == 254)  //Przygotowanie zamiennika znaku EOF
@@ -241,6 +216,7 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
                     temp[n++] = '1';
                     temp[n++] = '0';
                 }
+
                 fputc(bit, file);
             }
         }
@@ -251,10 +227,10 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
         bit = strtol(temp, 0, 2);
         fputc(bit, file);
         fputc(n, file);
-    } else fputc(0, file);
+    }
+    else fputc(0, file);
 
     fclose(file);
-
 }
 
 void ReadString(char to_compress[])
@@ -276,7 +252,8 @@ void ReadString(char to_compress[])
     }
 
     //Utworzenie drzewa binarnego i kompresja tekstu
-    Compress("file",to_compress, freq, letters, str_length, letters_count);
+    char file_name[16] = "file.txt";
+    Compress(file_name, to_compress, freq, letters, str_length, letters_count);
 }
 
 void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* letters_count)
@@ -301,7 +278,7 @@ void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* le
     fclose(file);
 }
 
-void ReadFile(FILE* file, char file_name[])
+void ReadTXTFile(FILE* file, char file_name[])
 {
     //Inicjacja zmiennych potrzebnych do odczytu tekstu
     int str_length = 0, letters_count = 0, i, freq[256];
@@ -313,12 +290,95 @@ void ReadFile(FILE* file, char file_name[])
     //Utworzenie drzewa binarnego i kompresja tekstu
     Compress(file_name, string, freq, letters, str_length, letters_count);
 
+    //Zwolnienie miejsca w pamięci
+    free(string);
 }
 
-int main(int argc, char *argv[])
+FILE* FileFormat(char file_name[])
 {
-    //Obsluga lini komend
-    if (argc >= 3 && !strcmp(argv[1], "compress")) {
+    ClearConsole();
+    printf("Podaj sciezke pliku: ");
+
+    gets(file_name);
+    if (file_name[0] == '"' && strlen(file_name) > 2)
+    {
+        for (int i = 0; i < strlen(file_name) - 2; i++) file_name[i] = file_name[i + 1];
+        file_name[strlen(file_name) - 2] = '\0';
+    }
+    return fopen(file_name, "r");
+}
+
+void Wait()
+{
+    printf("\n\nWcisnij dowolny klawisz, aby kontynuowac...");
+    getch();
+}
+
+void FromEXE()
+{
+    char ch = '1';
+    char file_name[128];
+    while (ch != '0')
+    {
+        ClearConsole();
+        printf("###################################################################\n#                  Kompresja algorytmem Huffmana                  #\n#                                                                 #\n# 1 - kompresuj plik | 2 - kompresuj tekst | 3 - dekompresuj plik #\n###################################################################\n");
+
+        ch = getch();
+
+        if (ch == '1') { //Kompresja pliku
+            FILE* file = FileFormat(file_name);
+
+            if (file == NULL)
+            {
+                printf("\rNiepoprawny adres pliku");
+                Sleep(2000);
+            }
+            else
+            {
+                ClearConsole();
+                ReadTXTFile(file, file_name);
+                fclose(file);
+                Wait();
+            }
+        }
+        else if (ch == '2') {
+            ClearConsole();
+            printf("Podaj tekst do kompresji: ");
+            char text[256];
+            gets(text);
+
+            ReadString(text);
+            Wait();
+        }
+        else if (ch == '3') { //Dekompresja pliku
+            FILE* file = FileFormat(file_name);
+
+            if (file == NULL)
+            {
+                printf("\rNiepoprawny adres pliku");
+                Sleep(2000);
+            }
+            else if (strstr(file_name, "huff") == NULL)
+            {
+                fclose(file);
+                printf("\nNiepoprawny format pliku. Akceptowane tylko .huff");
+                Sleep(3000);
+            }
+            else
+            {
+                ClearConsole();
+                Decompress(file, file_name);
+                fclose(file);
+                Wait();
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc == 1) FromEXE();
+    else if (argc >= 3 && !strcmp(argv[1], "compress")) { //Obsluga lini komend
 
         FILE* file = fopen(argv[2], "r");
 
@@ -327,7 +387,7 @@ int main(int argc, char *argv[])
         {
             char file_name[128];
             strcpy(file_name, argv[2]);
-            ReadFile(file, file_name);
+            ReadTXTFile(file, file_name);
         }
     }
     else if (argc >= 3 && !strcmp(argv[1], "decompress")) {
@@ -335,10 +395,16 @@ int main(int argc, char *argv[])
             printf("\nNiepoprawny format lub adres pliku\n");
             return 0;
         }
-        Decompress(argv[2]);
+
+        FILE* file = fopen(argv[2], "r");
+        if (file == NULL) {
+            perror("Unable to open file");
+            exit(EXIT_FAILURE);
+        }
+        Decompress(file, argv[2]);
     }
     else {
-        printf("Lista dostepnych komend:\n\n huffman compress \"tekst\"\n huffman compress <adres pliku>\n huffman decompress <adres skompresowanego pliku>\n\n");
+        printf("Lista dostepnych komend:\n\n Huff compress \"tekst\"\n Huff compress <adres pliku>\n Huff decompress <adres skompresowanego pliku>\n\n");
         system("pause");
         return 1;
     }

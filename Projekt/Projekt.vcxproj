@@ -106,9 +106,6 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="PropertySheet.props" />
-    <Text Include="readme.txt">
-      <DeploymentContent>false</DeploymentContent>
-    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
@@ -116,6 +113,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Projekt.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\..\..\..\rysunek.ico" />
+    <Image Include="..\..\..\..\..\..\..\rysunek.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
