@@ -377,6 +377,8 @@ void FromEXE()
 
 int main(int argc, char* argv[])
 {
+    SetConsoleTitle(L"Kompresja Huffmana");
+
     if (argc == 1) FromEXE();
     else if (argc >= 3 && !strcmp(argv[1], "compress")) { //Obsluga lini komend
 
