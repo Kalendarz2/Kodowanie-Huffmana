@@ -5,12 +5,22 @@
 #include <conio.h>
 #include <windows.h>
 
+/// <summary>
+/// Funkcja czyszcząca zawartość kompatybilnej konsoli 
+/// </summary>
 void ClearConsole()
 {
     system("@cls||clear");
 }
 
-//Zapisanie kodu odczytu danych z drzewa na podstawie znaków stringu wejściowego
+/// <summary>
+/// Zapisanie kodu odczytu danych z drzewa na podstawie znaków stringu wejściowego (Funkcja optymalizacyjna)
+/// </summary>
+/// <param name="root">korzeń drzewa</param>
+/// <param name="code">zapisywany kod</param>
+/// <param name="arr">słowo bitowe</param>
+/// <param name="top">długość słowa bitowego</param>
+/// <param name="line">wyswietlanie w kolumnach w konsoli</param>
 void SaveCode(struct QueuePart* root, char* code[], char arr[], int top, int* line)
 {
     if (root->left)
@@ -49,6 +59,13 @@ void SaveCode(struct QueuePart* root, char* code[], char arr[], int top, int* li
     }
 }
 
+/// <summary>
+/// Funkcja rekurencyjna odkodowująca tekst na podstawie drzewa
+/// </summary>
+/// <param name="root">korzeń drzewa</param>
+/// <param name="index">indeks ciągu binarnego</param>
+/// <param name="str_compressed">ciąg binarny</param>
+/// <param name="file">plik wyjściowy</param>
 void Decode(struct QueuePart* root, int* index, char str_compressed[], FILE* file)
 {
     if (!root->left && !root->right)
@@ -63,6 +80,63 @@ void Decode(struct QueuePart* root, int* index, char str_compressed[], FILE* fil
     else return;
 }
 
+/// <summary>
+/// Rekonstrukcja drzewa podczas dekompresji pliku
+/// </summary>
+/// <param name="file">skompresowany plik</param>
+/// <returns>korzeń drzewa</returns>
+/// @see Decompress() Tree()
+void* ReconstructTree(FILE* file)
+{
+    char letter, letter2, letters[256], count[8];
+    int i = 0, n = 0, line = 0, freq[256];
+
+    printf("znak    ilosc   znak    ilosc   znak    ilosc   znak    ilosc\n");
+    while ((letter = (char)fgetc(file)) != -1)
+    {
+
+        letters[n] = letter;
+        i = 0;
+        letter2 = (char)fgetc(file);
+        if (letter == '-' && letter2 == '-') //Koniec drzewa i miejsce rozpoczęcia skompresowanego pliku
+        {
+            break;
+        }
+
+        do {
+            count[i++] = (char)letter2;
+        } while ((letter2 = (char)fgetc(file)) != ' ');
+
+        freq[letters[n]] = (int)atoi(count);
+
+        //Wyświetlanie
+        if (letters[n] == '\n') printf("'/n'    %d", letters[n], freq[letters[n]]);
+        else if (letters[n] == 9) printf("'tab'   %d", letters[n], freq[letters[n]]);
+        else printf("'%c'     %d", letters[n], freq[letters[n]]);
+
+        line++;
+        printf("\r\033[16C");
+        if (line >= 2) printf("\033[16C");
+        if (line == 3) printf("\033[16C");
+        else if (line >= 4)
+        {
+            printf("\n");
+            line = 0;
+        }
+
+        //printf("'%c'     %d\n", letters[n], freq[letters[n]]);
+        n++;
+    }
+    SortInput(n, freq, letters);
+    return Tree(letters, freq, n);
+}
+
+/// <summary>
+/// Głowna funkcja dekompresji pliku. Odtwarza ona drzewo binarne na podstawie zapisanych danych, a następnie na jego podstawie dokompresuje tekst
+/// </summary>
+/// <param name="file">plik .huff do dekompresji</param>
+/// <param name="file_name">nazwa pliku</param>
+/// @see ReconstructTree() Decode()
 void Decompress(FILE* file, char file_name[])
 {
     //Rekonstrukcja drzewa binarnego
@@ -160,6 +234,16 @@ void Decompress(FILE* file, char file_name[])
     free(str_compressed);
 }
 
+/// <summary>
+/// Głowna funkcja kompresji. Część wspólna ReadTXTFile() i ReadString()
+/// </summary>
+/// <param name="file_name">nazwa pliku docelowego</param>
+/// <param name="string">tekst do kompresji</param>
+/// <param name="freq">częstotliwość występowania znaków</param>
+/// <param name="letters">lista znaków, które wystąpiły w tekście</param>
+/// <param name="str_length">długość tekstu</param>
+/// <param name="letters_count">ilość unikatowych znaków</param>
+/// @see ReadTXTFile() Compress() SaveCode()
 void Compress(char file_name[], char string[], int freq[], char letters[], int str_length, int letters_count)
 {
     printf("Dlugosc: %d\nUnikalnych znakow: %d\n\n", str_length, letters_count);
@@ -233,6 +317,11 @@ void Compress(char file_name[], char string[], int freq[], char letters[], int s
     fclose(file);
 }
 
+/// <summary>
+/// Funkcja odczytująca tekst podany przez użytkowanika i przygotowująca dane.
+/// </summary>
+/// <param name="to_compress">wprowadzony tekst</param>
+/// @see ReadTXTFile() Compress()
 void ReadString(char to_compress[])
 {
     //Inicjacja zmiennych potrzebnych do odczytu tekstu
@@ -256,6 +345,16 @@ void ReadString(char to_compress[])
     Compress(file_name, to_compress, freq, letters, str_length, letters_count);
 }
 
+/// <summary>
+/// Funkcja
+/// </summary>
+/// <param name="file">plik do odczytu</param>
+/// <param name="freq">częstotliwość występowaniu znaków</param>
+/// <param name="letters">znaki występujące w tekście</param>
+/// <param name="str_length">długość tekstu w pliku</param>
+/// <param name="letters_count">ilość unikalnych znaków</param>
+/// <returns>dynamiczny adres nowego ciągu znaków pobranych z pliku</returns>
+/// @see ReadTXTFile()
 void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* letters_count)
 {
     char letter;
@@ -278,6 +377,12 @@ void* InputFile(FILE* file, int freq[], char letters[], int* str_length, int* le
     fclose(file);
 }
 
+/// <summary>
+/// Alternatywa ReadString(). Odczytuje dane z pliku i wywołuje funkcje.
+/// </summary>
+/// <param name="file"></param>
+/// <param name="file_name"></param>
+/// @see ReadString() InputFile() Compress()
 void ReadTXTFile(FILE* file, char file_name[])
 {
     //Inicjacja zmiennych potrzebnych do odczytu tekstu
@@ -294,6 +399,11 @@ void ReadTXTFile(FILE* file, char file_name[])
     free(string);
 }
 
+/// <summary>
+/// Fukcja formatująca adres pliku w przypadku umieszczenia go w cudzysłowie
+/// </summary>
+/// <param name="file_name">adres pliku</param>
+/// <returns>Otwarty plik ze sformatowanego adresu</returns>
 FILE* FileFormat(char file_name[])
 {
     ClearConsole();
@@ -308,12 +418,19 @@ FILE* FileFormat(char file_name[])
     return fopen(file_name, "r");
 }
 
+/// <summary>
+/// Funkcja oczekująca na wciśnięcie dowolnego klawisza przez użytkownika
+/// </summary>
 void Wait()
 {
     printf("\n\nWcisnij dowolny klawisz, aby kontynuowac...");
     getch();
 }
 
+/// <summary>
+/// Głowna funkcja wykonywana w przypadku włączenia programu z poziomu pliku .exe lub wpisaniu komendy bez argumentów
+/// </summary>
+/// @see ClearConsole() FileFormat() ReadTXTFile() ReadString() Decompress()
 void FromEXE()
 {
     char ch = '1';
@@ -325,7 +442,7 @@ void FromEXE()
 
         ch = getch();
 
-        if (ch == '1') { //Kompresja pliku
+        if (ch == '1') { // Kompresja pliku
             FILE* file = FileFormat(file_name);
 
             if (file == NULL)
@@ -341,7 +458,7 @@ void FromEXE()
                 Wait();
             }
         }
-        else if (ch == '2') {
+        else if (ch == '2') { // Kompresja tekstu
             ClearConsole();
             printf("Podaj tekst do kompresji: ");
             char text[256];
@@ -375,6 +492,11 @@ void FromEXE()
     }
 }
 
+/// <summary>
+/// Głowna funkcja programu z możliwością obsługi z poziomu linii komend
+/// </summary>
+/// <param name="argc">Ilość argumentów komendy</param>
+/// <param name="argv">Treść argumentów</param>
 int main(int argc, char* argv[])
 {
     SetConsoleTitle(L"Kompresja Huffmana");

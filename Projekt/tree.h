@@ -1,33 +1,47 @@
 ﻿#include <stdlib.h>
 #include <stdio.h>
 
-//Fragment kolejki zawiarający dane o znaku
+/// Fragment drzewa zawiarający dane o znaku
 struct QueuePart {
+    /// Znak przechowywany w strukturze
     char data;
+    /// Ilość wystąpień znaku
     unsigned freq;
+    /// Wskaźniki na elementy drzewa
     struct QueuePart* left, * right;
 };
 
-//Kolejka
+/// Kolejka znaków
 struct Queue {
     int front, back, capacity;
+    /// lista wskaźników na części drzewa (QueuePart)
     struct QueuePart** array;
 };
 
-//Test, czy kolejka jest pusta
+/// <summary>
+/// Test, czy kolejka jest pusta
+/// </summary>
+/// <param name="queue">kolejka znaków</param>
+/// <returns> 1 - kolejka jest pusta, 0 - nie jest pusta</returns>
 int isEmpty(struct Queue* queue)
 {
     return (queue->front == -1);
 }
 
-//Pobieranie pierwszego elementu kolejki
+/// <summary>
+/// Pobieranie pierwszego elementu kolejki
+/// </summary>
+/// <returns> pierwszy element</returns>
 struct QueuePart* getFront(struct Queue* queue)
 {
     if (queue->front == -1) return NULL;
     return queue->array[queue->front];
 }
 
-//Utworzenie nowego elementu
+/// <summary>
+/// Utworzenie nowego elementu drzewa
+/// </summary>
+/// <returns> nowy element drzewa</returns>
 struct QueuePart* CreatePart(char data, unsigned freq)
 {
     struct QueuePart* temp = (struct QueuePart*)malloc(sizeof(struct QueuePart));
@@ -37,7 +51,10 @@ struct QueuePart* CreatePart(char data, unsigned freq)
     return temp;
 }
 
-//Utworzenie nowej kolejki
+/// <summary>
+/// Utworzenie nowej kolejki
+/// </summary>
+/// <returns> nową kolejkę</returns>
 struct Queue* CreateQueue(int capacity)
 {
     struct Queue* queue = (struct Queue*)malloc(sizeof(struct Queue));
@@ -48,7 +65,11 @@ struct Queue* CreateQueue(int capacity)
     return queue;
 }
 
-//Dodanie elementu do kolejki
+/// <summary>
+/// Dodanie elementu do kolejki
+/// </summary>
+/// <param name="queue">kolejka, do której zostanie dodany element</param>
+/// <param name="item">element do dodania</param>
 void AddToQueue(struct Queue* queue, struct QueuePart* item)
 {
     if (queue->back == queue->capacity - 1) return;
@@ -57,7 +78,10 @@ void AddToQueue(struct Queue* queue, struct QueuePart* item)
     if (queue->front == -1) ++queue->front;
 }
 
-//Usunięcie elementu z kolejki
+/// <summary>
+/// Usunięcie elementu z kolejki
+/// </summary>
+/// <returns> usunięty element</returns>
 struct QueuePart* RemoveFromQueue(struct Queue* queue)
 {
     if (isEmpty(queue)) return NULL;
@@ -68,7 +92,9 @@ struct QueuePart* RemoveFromQueue(struct Queue* queue)
     return temp;
 }
 
-//Transfer najmniejszej wartości pomiędzy kolejkami
+/// <summary>
+/// Transfer najmniejszej wartości pomiędzy kolejkami
+/// </summary>
 struct QueuePart* MinFrom(struct Queue* Queue1, struct Queue* Queue2)
 {
     if (isEmpty(Queue1)) return RemoveFromQueue(Queue2);
@@ -77,6 +103,11 @@ struct QueuePart* MinFrom(struct Queue* Queue1, struct Queue* Queue2)
     return RemoveFromQueue(Queue2);
 }
 
+/// <summary>
+/// Głowna funkcja drzewa. Tworzy 2 kolejki, wypełanie pierwszą z nich elementami, a następnie na podstawie algorytmu Huffmana wypełnia drugą kolejkę.
+/// </summary>
+/// <returns> korzeń drzewa</returns>
+/// @see CreateQueue() CreatePart() AddToQueue() isEmpty() AddToQueue() RemoveFromQueue()
 struct QueuePart* Tree(char data[], int freq[], int size)
 {
     struct QueuePart* left, * right, * top;
@@ -100,7 +131,12 @@ struct QueuePart* Tree(char data[], int freq[], int size)
     return RemoveFromQueue(Queue2);
 }
 
-//Sortowanie wartości wejściowych drzewa
+/// <summary>
+/// Sortowanie wartości wejściowych drzewa
+/// </summary>
+/// <param name="n">ilość znaków</param>
+/// <param name="freq">ilość wystąpień znaków</param>
+/// <param name="letters">znaki występujące w tekście</param>
 void SortInput(int n, int freq[], char letters[])
 {
     char temp;
@@ -112,50 +148,4 @@ void SortInput(int n, int freq[], char letters[])
                 letters[j] = letters[j + 1];
                 letters[j + 1] = temp;
             }
-}
-
-//Rekonstrukcja drzewa podczas dekompresji pliku
-void* ReconstructTree(FILE* file)
-{
-    char letter, letter2, letters[256], count[8];
-    int i = 0, n = 0, line = 0, freq[256];
-
-    printf("znak    ilosc   znak    ilosc   znak    ilosc   znak    ilosc\n");
-    while ((letter = (char)fgetc(file)) != -1)
-    {
-
-        letters[n] = letter;
-        i = 0;
-        letter2 = (char)fgetc(file);
-        if (letter == '-' && letter2 == '-') //Koniec drzewa i miejsce rozpoczęcia skompresowanego pliku
-        {
-            break;
-        }
-
-        do {
-            count[i++] = (char)letter2;
-        } while ((letter2 = (char)fgetc(file)) != ' ');
-
-        freq[letters[n]] = (int)atoi(count);
-
-        //Wyświetlanie
-        if (letters[n] == '\n') printf("'/n'    %d", letters[n], freq[letters[n]]);
-        else if (letters[n] == 9) printf("'tab'   %d", letters[n], freq[letters[n]]);
-        else printf("'%c'     %d", letters[n], freq[letters[n]]);
-
-        line++;
-        printf("\r\033[16C");
-        if (line >= 2) printf("\033[16C");
-        if (line == 3) printf("\033[16C");
-        else if (line >= 4)
-        {
-            printf("\n");
-            line = 0;
-        }
-
-        //printf("'%c'     %d\n", letters[n], freq[letters[n]]);
-        n++;
-    }
-    SortInput(n, freq, letters);
-    return Tree(letters, freq, n);
 }
